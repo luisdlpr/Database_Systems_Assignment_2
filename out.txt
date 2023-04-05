@@ -1,0 +1,120 @@
+Test My_Pokemon_1 (./my_pokemon 11243 << 1 1 1 1 1 1 1) - failed (Incorrect output)
+Your program produced these 107 lines of output:
+Select an option from the menu below by entering its number:
+ 1) Sword
+ 2) Ultra Moon
+ 3) Diamond
+ 4) Emerald
+ 5) Omega Ruby
+ 6) Violet
+ 7) Fire Red
+ 8) Scarlet
+ 9) Silver
+10) Gold
+> Selection: 1
+
+Select an option from the menu below by entering its number:
+ 1) Ribombee
+ 2) Mega Tyranitar
+ 3) Milcery
+ 4) Galarian Farfetch'd
+ 5) Araquanid
+ 6) Sigilyph
+ 7) Duraludon
+ 8) Mega Steelix
+ 9) Sneasel
+10) Toxel
+> Selection: 1
+
+Select an option from the menu below by entering its number:
+1) Honey Gather
+2) Shield Dust
+3) Sweet Veil
+> Selection: 1
+
+...
+
+
+The correct 104 lines of output for this test were:
+Select an option from the menu below by entering its number:
+ 1) Sword
+ 2) Ultra Moon
+ 3) Diamond
+ 4) Emerald
+ 5) Omega Ruby
+ 6) Violet
+ 7) Fire Red
+ 8) Scarlet
+ 9) Silver
+10) Gold
+> Selection: 1
+
+Select an option from the menu below by entering its number:
+ 1) Ribombee
+ 2) Mega Tyranitar
+ 3) Milcery
+ 4) Galarian Farfetch'd
+ 5) Araquanid
+ 6) Sigilyph
+ 7) Duraludon
+ 8) Mega Steelix
+ 9) Sneasel
+10) Toxel
+> Selection: 1
+
+Select an option from the menu below by entering its number:
+1) Honey Gather
+2) Shield Dust
+3) Sweet Veil
+> Selection: 1
+
+...
+
+
+The difference between your output(-) and the correct output(+) is:
+...
+   1) Absorb
++  2) Aromatherapy
++  3) Bug Buzz
++  4) Covet
++  5) Dazzling Gleam
++  6) Draining Kiss
++  7) Fairy Wind
++  8) Pollen Puff
++  9) Quiver Dance
++ 10) Struggle Bug
++ 11) Stun Spore
++ 12) Sweet Scent
++ 13) Switcheroo
++ > Selection: 1
++ 
++ Select an option from the menu below by entering its number:
++  1) Aromatherapy
++  2) Bug Buzz
++  3) Covet
++  4) Dazzling Gleam
++  5) Draining Kiss
++  6) Fairy Wind
++  7) Pollen Puff
++  8) Quiver Dance
++  9) Struggle Bug
++ 10) Stun Spore
++ 11) Sweet Scent
++ 12) Switcheroo
++ > Selection: 1
++ 
+
+The input for this test was:
+1
+1
+1
+1
+1
+1
+1
+
+You can reproduce this test by executing these commands:
+   helpers.sql helpers.py my_pokemon possible_evolutions pokemon_density attack_damage encounter_summary
+  echo -e '1\n1\n1\n1\n1\n1\n1' | ./my_pokemon 11243
+
+0 tests passed 1 tests failed

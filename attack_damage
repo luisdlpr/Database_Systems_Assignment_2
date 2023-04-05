@@ -1,0 +1,63 @@
+#! /usr/bin/env python3
+
+
+"""
+COMP3311
+23T1
+Assignment 2
+Pokemon Database
+
+Written by: <YOUR NAME HERE> <YOUR STUDENT ID HERE>
+Written on: <DATE HERE>
+
+Attack Damage
+
+Given the name of an attacking, and a defending pokemon along with the name of a game in the Pokemon series,
+display a list, ordered from lowest to highest damage,
+of all the moves the attacking pokemon could use on the defending pokemon in the given game.
+"""
+
+
+import sys
+import psycopg2
+import helpers
+
+
+### Constants
+USAGE = f"Usage: {sys.argv[0]} <Attacking Pokemon Name> <Defending Pokemon Name> <Pokemon Game Name>"
+
+
+### Globals
+db = None
+Attacking_Pokemon_Name = None
+Defending_Pokemon_Name = None
+Pokemon_Game_Name      = None
+
+
+### Command-line args
+if len(sys.argv) != 4:
+    print(USAGE, file=sys.stderr)
+    sys.exit(1)
+Attacking_Pokemon_Name = helpers.clean(sys.argv[1])
+Defending_Pokemon_Name = helpers.clean(sys.argv[2])
+Pokemon_Game_Name      = helpers.clean(sys.argv[3])
+
+
+def main():
+    # TODO: YOUR CODE HERE
+    ...
+
+
+if __name__ == '__main__':
+    try:
+        db = psycopg2.connect(dbname="ass2")
+        main()
+    except psycopg2.Error as err:
+        print("DB error: ", err)
+    except Exception as err:
+        print("Internal Error: ", err)
+        raise err
+    finally:
+        if db is not None:
+            db.close()
+    sys.exit(0)

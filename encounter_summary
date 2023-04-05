@@ -1,0 +1,59 @@
+#! /usr/bin/env python3
+
+
+"""
+COMP3311
+23T1
+Assignment 2
+Pokemon Database
+
+Written by: <YOUR NAME HERE> <YOUR STUDENT ID HERE>
+Written on: <DATE HERE>
+
+Encounter Summary
+
+Print a summary of all the Pokemon that can be encountered at a given location in a given game
+"""
+
+
+import sys
+import psycopg2
+import helpers
+
+
+### Constants
+USAGE = f"Usage: {sys.argv[0]} <Location> <Game>"
+
+
+### Globals
+db = None
+Location = None
+Game = None
+
+
+### Command-line args
+if len(sys.argv) != 3:
+    print(USAGE, file=sys.stderr)
+    sys.exit(1)
+Location = helpers.clean(sys.argv[1])
+Game     = helpers.clean(sys.argv[2])
+
+
+def main():
+    # TODO: YOUR CODE HERE
+    ...
+
+
+if __name__ == '__main__':
+    try:
+        db = psycopg2.connect(dbname="ass2")
+        main()
+    except psycopg2.Error as err:
+        print("DB error: ", err)
+    except Exception as err:
+        print("Internal Error: ", err)
+        raise err
+    finally:
+        if db is not None:
+            db.close()
+    sys.exit(0)
