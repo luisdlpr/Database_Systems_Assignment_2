@@ -7,12 +7,15 @@ COMP3311
 Assignment 2
 Pokemon Database
 
-Written by: <YOUR NAME HERE> <YOUR STUDENT ID HERE>
-Written on: <DATE HERE>
+Written by: Luis Vicente De La Paz Reyes z5206766
+Written on: 050423
 
 My Pokemon
 
 Create your very own Pokemon
+
+TO ASK:
+    distinct moves??
 """
 
 
@@ -64,8 +67,10 @@ def menu(items: list[str]) -> int:
 
 
 def main():
+    # convert given seed to float
     float_seed = rng.random()
-    # init main cursor
+
+    # use context manager for cursor
     with db.cursor() as cur:
 
         # set psql seed to random
@@ -85,13 +90,21 @@ def main():
         
         # present menu for pokemon in selected game (rng 10)
         query_pokemon_menu = """
-        SELECT p.name, p.id, p.species, p.first_type, p.second_type, g.regional_id
+        SELECT p.name, p.id, p.species, tf.name, ts.name, g.regional_id
         FROM Pokemon AS p
         INNER JOIN (
             SELECT national_id, game, regional_id
             FROM Pokedex
             WHERE game = %s
         ) AS g ON g.national_id = p.id
+        LEFT JOIN (
+            SELECT name, id
+            FROM Types
+        ) AS tf ON tf.id = p.first_type
+        LEFT JOIN (
+            SELECT name, id
+            FROM Types
+        ) AS ts ON ts.id = p.second_type
         ORDER BY random()
         LIMIT 10;
         """
@@ -114,6 +127,7 @@ def main():
         """
         cur.execute(query_poke_ab_menu, (poke_id_split[0], poke_id_split[1]))
         ab_options = cur.fetchall()
+        # if no abilities are found for the pokemon just set as none
         if len(ab_options) > 0:
             ab_selected = ab_options[menu([row[0] for row in ab_options])]
         else:
@@ -121,7 +135,7 @@ def main():
 
         # present menu for pokemons moves (order by id)
         query_poke_moves_menu = """
-        SELECT distinct m.name, m.id, t.name, m.category, m.power, m.accuracy
+        SELECT DISTINCT m.name, m.id, t.name, m.category, m.power, m.accuracy
         FROM Moves AS m
         INNER JOIN (
             SELECT Learnt_By, Learnt_In, Learnt_When, Learns
@@ -143,31 +157,27 @@ def main():
         """
         cur.execute(query_poke_moves_menu, (poke_id_split[0], poke_id_split[1], game_selected[1]))
         moves_options = cur.fetchall()
-        moves_selected = []
 
+        # let the user select up to 4 moves
+        moves_selected = []
         for _ in range(4):
+            # if there are no more options just exit
             if len(moves_options) <= 0:
                 break
             move_selected = menu([row[0] for row in moves_options])
             moves_selected.append(moves_options[move_selected])
             moves_options.pop(move_selected)
 
+        # convert the typeids to a string of names
         types = [poke_selected[3], poke_selected[4]]
         type_string = "Type: "
 
         if types[1] is not None:
-            query_poke_types = "SELECT id, name FROM Types WHERE id = %s OR id = %s"
-            cur.execute(query_poke_types, (types[0], types[1]))
-            types_names = {}
-            for row in cur.fetchall():
-                types_names[row[0]] = row[1]
-            type_string += f"{types_names[types[0]]} + {types_names[types[1]]}\n"
+            type_string += f"{types[0]} + {types[1]} \n"
         else:
-            query_poke_types = "SELECT name FROM Types WHERE id = %s"
-            cur.execute(query_poke_types, (types[0], ))
-            types_names = cur.fetchall()
-            type_string += f"{types_names[0][0]}\n"
+            type_string += f"{types[0]} \n"
 
+        # format and input the collected data into output string
         output_string = f"""
               Here is your new Pokemon (from Pokemon {game_selected[0]}):
 
@@ -182,16 +192,12 @@ def main():
 
               Moves:
         """
-
         for move in moves_selected:
             output_string += f"\t{move[0]}\t[{move[2]}]\t(Category: {move[3]}, Power: {move[4]}, Accuracy:{move[5]})\n"
         
         print(output_string)
 
-
-
-
-    ...
+    return
 
 if __name__ == '__main__':
     try:
