@@ -40,7 +40,41 @@ Pokemon_Name = helpers.clean(sys.argv[1])
 
 
 def main():
-    # TODO: YOUR CODE HERE
+    with db.cursor() as cur:
+
+        # take name of pokemon
+        pre_ev_query = """
+        SELECT *
+        FROM Pokemon AS po
+        INNER JOIN (
+            SELECT e.post_evolution
+            FROM Evolutions AS e
+            INNER JOIN (
+                SELECT id FROM Pokemon WHERE name = %s
+            ) AS p ON p.id = e.pre_evolution
+        ) AS pe ON pe.post_evolution = po.id;
+        """
+        cur.execute(pre_ev_query, (Pokemon_Name, ))
+        print(cur.fetchall())
+
+        post_ev_query = """
+        SELECT *
+        FROM Pokemon AS po
+        INNER JOIN (
+            SELECT e.pre_evolution
+            FROM Evolutions AS e
+            INNER JOIN (
+                SELECT id FROM Pokemon WHERE name = %s
+            ) AS p ON p.id = e.post_evolution
+        ) AS pe ON pe.pre_evolution = po.id;
+        """
+        cur.execute(post_ev_query, (Pokemon_Name, ))
+        print(cur.fetchall())
+
+    # print pre evolutions and evolutions
+    # requirements for evolutions to occur
+    # order pokemon by id (pokedex number then variation number)
+    # order requirements by evolutions id then evolution_requirements.inverted then requirements.id
     ...
 
 

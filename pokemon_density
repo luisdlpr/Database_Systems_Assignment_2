@@ -13,6 +13,9 @@ Written on: <DATE HERE>
 Pokemon Density
 
 Find the density of pokemon in each location within a given region.
+
+TO ASK:
+    is looping through locations bad design for this question
 """
 
 
@@ -38,8 +41,70 @@ Region = helpers.clean(sys.argv[1])
 
 
 def main():
-    # TODO: YOUR CODE HERE
-    ...
+    # print name of location and average density of poke in location
+    # sort by density then location_name
+    # account for no pokemon
+    # convert from kd to g/cm
+    # x scale density by rarity
+    # round to 4 dp
+    with db.cursor() as cur:
+        # region_query = """
+        # SELECT l.name, l.id, g.region
+        # FROM Locations as l
+        # INNER JOIN (
+        #     SELECT id, name, region
+        #     FROM Games
+        #     WHERE Region = %s
+        # ) AS g ON l.appears_in = g.id
+        # """
+        # cur.execute(region_query, (Region, ))
+        # locations_in_region = cur.fetchall()
+
+        # for loc in locations_in_region:
+        #     location_query = """
+
+        #     """
+
+        # pokemon average density join with encounters for location id
+        # only encounters where location id is in locations by region
+        average_density_query = """
+        SELECT DISTINCT l.name, d.average_density
+        FROM Locations_in_region AS l
+        LEFT JOIN (
+            SELECT *
+            FROM average_density_by_location_id
+        ) AS d ON d.location_id = l.id
+        WHERE l.region = %s
+        ORDER BY d.average_density DESC, l.name ASC
+        """
+        cur.execute(average_density_query, (Region,))
+        data = (cur.fetchall())
+
+        output_string = f"""
+        The average density of Pokemon within each location in the '{Region}' region: \n
+        """
+        counter = 0
+        for row in data:
+            if row[1] is None:
+                counter += 1
+            else:
+                rounded_value = round(float(row[1]), 4)
+                output_string += f"\t{row[0]}\t{rounded_value:.4f}\n"
+
+        if counter >= len(data):
+            print(output_string)
+            return
+
+        output_string += f"The following locations in '{Region}' have no wild Pokemon encounters: \n"
+        for index in range(counter):
+            output_string += f"\t{data[index][0]}\n"
+
+        print(output_string)
+        return
+
+
+        
+
 
 
 if __name__ == '__main__':

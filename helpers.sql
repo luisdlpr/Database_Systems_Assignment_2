@@ -96,3 +96,57 @@ INNER JOIN (
   SELECT name, id
   FROM Pokemon
 ) AS p ON p.id = a.Known_By;
+
+CREATE OR REPLACE FUNCTION scaled_density(m Meters, k Kilograms, s Numeric) RETURNS Numeric
+AS $$
+DECLARE
+    Volume Numeric;
+BEGIN
+    Volume := (4.0 / 3.0) * PI() * POWER(m / 2.0, 3.0);
+    RETURN (k / Volume)*0.001*(s / 100.0);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE VIEW sum_density_by_location(count_density, sum_Density, Location_ID) AS
+SELECT count(scaled_density(p.average_height, p.average_weight, e.rarity)), 
+        sum(scaled_density(p.average_height, p.average_weight, e.rarity)), e.occurs_at
+FROM Pokemon AS p
+INNER JOIN (
+    SELECT *
+    FROM Encounters
+) AS e ON p.id = e.occurs_with
+INNER JOIN (
+    SELECT *
+    FROM Locations
+) AS l ON l.id = e.occurs_at
+GROUP BY e.occurs_at;
+
+create or replace view test(name, height, weight, rarity, d, e) as
+SELECT p.name, p.average_height, p.average_weight, e.rarity, scaled_density(p.average_height, p.average_weight, e.rarity), e.occurs_at
+FROM Pokemon AS p
+INNER JOIN (
+    SELECT *
+    FROM pokedex
+) AS e ON p.id = e.national_id
+INNER JOIN (
+    SELECT *
+    FROM Locations
+) AS l ON l.id = e.occurs_at;
+
+
+
+CREATE OR REPLACE VIEW locations_in_region(name, id, region) AS
+SELECT DISTINCT l.name, l.id, g.region
+FROM Locations as l
+INNER JOIN (
+    SELECT id, name, region
+    FROM Games
+) AS g ON l.appears_in = g.id;
+
+CREATE OR REPLACE VIEW average_density_by_location(name, count_density, sum_density, region) AS
+SELECT l.name, d.count_density, d.sum_density, l.region
+FROM locations_in_region AS l
+LEFT JOIN (
+  SELECT *
+  FROM sum_density_by_location
+) AS d ON d.location_id = l.id;
