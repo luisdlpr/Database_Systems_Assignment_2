@@ -39,43 +39,120 @@ if len(sys.argv) != 2:
 Pokemon_Name = helpers.clean(sys.argv[1])
 
 
+def format_requirements(requirements):
+    # [[evolution id, pokemon id, pokemon name, assertion, inverted], [...], [...]]
+    ev_requirements_map = {}
+    for req in requirements:
+        update = ev_requirements_map.get(req[0], [])
+        update.append(req)
+        ev_requirements_map[req[0]] = update
+
+    output_string = ""
+
+    for evo in ev_requirements_map.keys():
+        for requirement in ev_requirements_map[evo]:
+            if requirement[4] is True:
+                output_string += "\t\t\t\tNOT "
+            else:
+                output_string += "\t\t\t\t"
+            output_string += f"{requirement[3]}\n\t\t\tAND\n"
+        output_string = output_string[0:-7]
+        output_string += "\t\tOR\n"
+    output_string = output_string[0:-5]
+
+    return output_string
+
 def main():
     with db.cursor() as cur:
+        # check pokemon exists
+        check_pokemon_query = """
+        SELECT count(id)
+        FROM Pokemon
+        WHERE name = %s
+        """
+        cur.execute(check_pokemon_query, (Pokemon_Name, ))
+        result = cur.fetchone()
+        if result[0] == 0:
+            print(f"'{Pokemon_Name}' isn't a Pokemon that exists.", file=sys.stderr)
+            sys.exit(1)
 
         # take name of pokemon
-        pre_ev_query = """
-        SELECT *
+        # print pre evolutions and evolutions
+        post_ev_query = """
+        SELECT pe.id, po.id as poke_id, po.name, re.assertion, er.inverted
         FROM Pokemon AS po
         INNER JOIN (
-            SELECT e.post_evolution
+            SELECT e.id, e.post_evolution
             FROM Evolutions AS e
             INNER JOIN (
                 SELECT id FROM Pokemon WHERE name = %s
             ) AS p ON p.id = e.pre_evolution
-        ) AS pe ON pe.post_evolution = po.id;
+        ) AS pe ON pe.post_evolution = po.id
+        JOIN (
+            SELECT evolution, requirement, inverted
+            FROM Evolution_Requirements
+        ) AS er ON er.evolution = pe.id
+        JOIN (
+            SELECT id, assertion
+            FROM Requirements
+        ) AS re ON er.requirement = re.id;
         """
-        cur.execute(pre_ev_query, (Pokemon_Name, ))
-        print(cur.fetchall())
+        cur.execute(post_ev_query, (Pokemon_Name, ))
+        post_evs = cur.fetchall()
 
-        post_ev_query = """
-        SELECT *
+        pre_ev_query = """
+        SELECT pe.id, po.id as poke_id, po.name, re.assertion, er.inverted
         FROM Pokemon AS po
         INNER JOIN (
-            SELECT e.pre_evolution
+            SELECT e.id, e.pre_evolution
             FROM Evolutions AS e
             INNER JOIN (
                 SELECT id FROM Pokemon WHERE name = %s
             ) AS p ON p.id = e.post_evolution
-        ) AS pe ON pe.pre_evolution = po.id;
+        ) AS pe ON pe.pre_evolution = po.id
+        JOIN (
+            SELECT evolution, requirement, inverted
+            FROM Evolution_Requirements
+        ) AS er ON er.evolution = pe.id
+        JOIN (
+            SELECT id, assertion
+            FROM Requirements
+        ) AS re ON er.requirement = re.id
+        ORDER BY po.id, pe.id, er.inverted, re.id;
         """
-        cur.execute(post_ev_query, (Pokemon_Name, ))
-        print(cur.fetchall())
+        cur.execute(pre_ev_query, (Pokemon_Name, ))
+        pre_evs = cur.fetchall()
 
-    # print pre evolutions and evolutions
-    # requirements for evolutions to occur
-    # order pokemon by id (pokedex number then variation number)
-    # order requirements by evolutions id then evolution_requirements.inverted then requirements.id
-    ...
+    if len(pre_evs) == 0:
+        output_string = f"'{Pokemon_Name}' doesn't have any pre-evolutions.\n\n"
+    else:
+        pre_ev_map = {}
+        for ev in pre_evs:
+            update = pre_ev_map.get(ev[1], [])
+            update.append(ev)
+            pre_ev_map[ev[1]] = update
+
+        output_string = f"'{Pokemon_Name}' can evolve from:\n"
+        for e in pre_ev_map.keys():
+            output_string += f"\t'{pre_ev_map[e][0][2]}' when the following requirements are satisfied:\n"
+            output_string += format_requirements(pre_ev_map[e])
+
+    if len(post_evs) == 0:
+        output_string += f"'{Pokemon_Name}' doesn't have any post-evolutions.\n"
+    else:
+        post_ev_map = {}
+        for ev in post_evs:
+            update = post_ev_map.get(ev[1], [])
+            update.append(ev)
+            post_ev_map[ev[1]] = update
+
+        output_string += f"'{Pokemon_Name}' can evolve into:\n"
+        for e in post_ev_map.keys():
+            output_string += f"\t'{post_ev_map[e][0][2]}' when the following requirements are satisfied:\n"
+            output_string += format_requirements(post_ev_map[e])
+
+    print(output_string)
+    sys.exit(0)
 
 
 if __name__ == '__main__':
