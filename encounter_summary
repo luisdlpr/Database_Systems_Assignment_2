@@ -40,8 +40,170 @@ Game     = helpers.clean(sys.argv[2])
 
 
 def main():
-    # TODO: YOUR CODE HERE
-    ...
+    # summary of each pokemon that can be encountered in the given location in the given game
+    # order by rarity (desc) then name, then max level, then requirements
+    # print name, type(s), rarity, minimum level, maximum level, [egg groups, abilities, requirements] order all these fields alpha
+    # omit egg group and abilities if not found
+    # do not include hidden abilities
+    # add not where possible on requirements
+    with db.cursor() as cur: 
+        # initial checks
+        cur.execute("SELECT count(*) FROM Games WHERE name = %s", (Game, ))
+        if cur.fetchone()[0] <= 0:
+            print(f"'Pokemon {Game}' isn't a game in the Pokemon series.", file=sys.stderr)
+            sys.exit(1)
+
+        cur.execute("SELECT count(*) FROM Locations WHERE name = %s", (Location, ))
+        if cur.fetchone()[0] <= 0:
+            print(f"'{Location}' isn't a location in the Pokemon series.", file=sys.stderr)
+            sys.exit(1)
+
+
+        # get location id
+        location_id_query = """
+        SELECT l.id 
+        FROM Locations AS l
+        WHERE l.name = %s
+        AND l.appears_in = (
+            SELECT id 
+            FROM Games
+            WHERE Name = %s
+        )
+        """
+        cur.execute(location_id_query, (Location, Game))
+        check_result = cur.fetchall()
+        if len(check_result) <= 0:
+            print(f"'{Location}' isn't in 'Pokemon {Game}'.", file=sys.stderr)
+            sys.exit(1)
+
+        # encounters joined with requirement and pokemon where occurs_at is equal to location id
+        encounters_query = """
+        SELECT p.id, p.name, pokemon_type_names(p.first_type), pokemon_type_names(p.second_type), e.rarity, e.levels, eg.name, r.assertion, en.inverted, a.name, e.id
+        FROM Pokemon as p
+        INNER JOIN (
+            SELECT *
+            FROM Encounters as e
+            WHERE e.occurs_at = %s
+        ) AS e ON e.occurs_with = p.id
+        INNER JOIN (
+            SELECT *
+            FROM Encounter_requirements
+        ) AS en ON en.encounter = e.id
+        INNER JOIN (
+            SELECT *
+            FROM Requirements
+        ) AS r ON r.id = en.requirement
+        LEFT JOIN (
+            SELECT *
+            FROM In_Group
+        ) AS ig ON ig.pokemon = p.id
+        LEFT JOIN (
+            SELECT *
+            FROM Egg_Groups
+        ) AS eg ON eg.id = ig.egg_group
+        LEFT JOIN (
+            SELECT *
+            FROM Knowable_Abilities
+            WHERE hidden = False
+        ) AS ka ON ka.known_by = p.id
+        LEFT JOIN (
+            SELECT *
+            FROM Abilities
+        ) AS a ON ka.knows = a.id
+        ORDER BY e.rarity, p.name, e.levels, en.requirement
+        """
+        cur.execute(encounters_query, (check_result[0], ))
+        encounters_result = cur.fetchall()
+        # for r in encounters_result:
+        #     print(r)
+    encounters_map = {}
+    for encounter in encounters_result:
+        current = encounters_map.get(encounter[10], {
+            'Name': None,
+            'Type': None,
+            'Rarity': None,
+            'Levels': None,
+            'Egg Groups': [],
+            'Abilities': [],
+            'Encounter Requirements': []
+        })
+
+        if current['Name'] is None:
+            current['Name'] = encounter[1]
+
+        if current['Type'] is None:
+            current['Type'] = [encounter[2], encounter[3]]
+
+        if current['Rarity'] is None:
+            current['Rarity'] = encounter[4]
+
+        if current['Levels'] is None:
+            current['Levels'] = encounter[5]
+
+        if encounter[6] is not None and encounter[6] not in current['Egg Groups']:
+            current['Egg Groups'].append(encounter[6])
+
+        if (encounter[7], encounter[8]) not in current['Encounter Requirements']:
+            current['Encounter Requirements'].append((encounter[7], encounter[8]))
+
+        if encounter[9] is not None and encounter[9] not in current['Abilities']:
+            current['Abilities'].append(encounter[9])
+
+        encounters_map[encounter[10]] = current
+    # for i in encounters_map.keys():
+        # print(i, encounters_map[i])
+
+    # for i in encounters_map.keys():
+    #     print(i, encounters_map[i])
+
+    sorting_order = []
+    for encounter in encounters_map.keys():
+        sorting_order.append((
+            100 - encounters_map[encounter]['Rarity'], 
+            encounters_map[encounter]['Name'],
+            int(encounters_map[encounter]['Levels'][1:-1].split(',')[1]), 
+            encounters_map[encounter]['Encounter Requirements'],
+            encounter
+        ))
+    sorting_order = sorted(sorting_order)
+    # print(sorting_order)
+
+
+    output_string = f"In 'Pokemon {Game}' at '{Location}' the following Pokemon can be Encountered:\n"
+    for order in sorting_order:
+        poke = order[4]
+
+        encounters_map[poke]['Levels'] = encounters_map[poke]['Levels'][1:-1].split(',')
+
+        output_string += f"\t{order[1]}:\n"
+
+        if (encounters_map[poke]['Type'][1]) is not None:
+            output_string += f"\t\tType: {encounters_map[poke]['Type'][0]}/{encounters_map[poke]['Type'][1]}\n"
+        else:
+            output_string += f"\t\tType: {encounters_map[poke]['Type'][0]}\n"
+        output_string += f"\t\tRarity: {encounters_map[poke]['Rarity']}%\n"
+        output_string += f"\t\tLevels: min {encounters_map[poke]['Levels'][0]}, max {encounters_map[poke]['Levels'][1]}\n"
+        if len(encounters_map[poke]['Egg Groups']) > 0:
+            output_string += f"\t\tEgg Groups: "
+            for group in sorted(encounters_map[poke]['Egg Groups']):
+                output_string += f"{group}, "
+            output_string = output_string[0:-2] + "\n"
+        if len(encounters_map[poke]['Abilities']) > 0:
+            output_string += f"\t\tAbilities: "
+            for abilities in sorted(encounters_map[poke]['Abilities']):
+                output_string += f"{abilities}, "
+            output_string = output_string[0:-2] + "\n"
+        output_string += f"\t\tEncounter Requirements: \n"
+        for req in sorted(encounters_map[poke]['Encounter Requirements']):
+            if req[1] is True:
+                output_string += f"NOT {req[0]}\n"
+            else:
+                output_string += f"{req[0]}\n"
+        output_string = output_string[0:-1] + "\n"
+        output_string += "\n"
+
+    print(output_string)
+    sys.exit(0)
 
 
 if __name__ == '__main__':

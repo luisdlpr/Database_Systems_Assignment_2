@@ -150,3 +150,14 @@ INNER JOIN (
 --   SELECT *
 --   FROM sum_density_by_location
 -- ) AS d ON d.location_id = l.id;
+
+CREATE OR REPLACE FUNCTION pokemon_type_names(type_id Numeric) RETURNS Text
+AS $$
+DECLARE
+  name Text;
+BEGIN
+  SELECT t.name FROM Types AS t WHERE t.id = type_id LIMIT 1 INTO name;
+  RETURN Name;
+END;
+$$ LANGUAGE plpgsql
+  
