@@ -121,17 +121,17 @@ INNER JOIN (
 ) AS l ON l.id = e.occurs_at
 GROUP BY e.occurs_at;
 
-create or replace view test(name, height, weight, rarity, d, e) as
-SELECT p.name, p.average_height, p.average_weight, e.rarity, scaled_density(p.average_height, p.average_weight, e.rarity), e.occurs_at
-FROM Pokemon AS p
-INNER JOIN (
-    SELECT *
-    FROM pokedex
-) AS e ON p.id = e.national_id
-INNER JOIN (
-    SELECT *
-    FROM Locations
-) AS l ON l.id = e.occurs_at;
+-- create or replace view test(name, height, weight, rarity, d, e) as
+-- SELECT p.name, p.average_height, p.average_weight, e.rarity, scaled_density(p.average_height, p.average_weight, e.rarity), e.occurs_at
+-- FROM Pokemon AS p
+-- INNER JOIN (
+--     SELECT *
+--     FROM pokedex
+-- ) AS e ON p.id = e.national_id
+-- INNER JOIN (
+--     SELECT *
+--     FROM Locations
+-- ) AS l ON l.id = e.occurs_at;
 
 
 
@@ -143,10 +143,10 @@ INNER JOIN (
     FROM Games
 ) AS g ON l.appears_in = g.id;
 
-CREATE OR REPLACE VIEW average_density_by_location(name, count_density, sum_density, region) AS
-SELECT l.name, d.count_density, d.sum_density, l.region
-FROM locations_in_region AS l
-LEFT JOIN (
-  SELECT *
-  FROM sum_density_by_location
-) AS d ON d.location_id = l.id;
+-- CREATE OR REPLACE VIEW sum_density_by_location(name, count_density, sum_density, region) AS
+-- SELECT l.name, d.count_density, d.sum_density, l.region
+-- FROM locations_in_region AS l
+-- LEFT JOIN (
+--   SELECT *
+--   FROM sum_density_by_location
+-- ) AS d ON d.location_id = l.id;
