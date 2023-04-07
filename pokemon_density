@@ -113,27 +113,27 @@ def main():
         cur.execute(average_density_query, (Region,))
         data = (cur.fetchall())
 
-        output_string = f"""
-        The average density of Pokemon within each location in the '{Region}' region: \n
-        """
-        counter = 0
-        for row in data:
-            if row[1] is None:
-                counter +=1
-            else:
-                rounded_value = round(float(row[1]), 4)
-                output_string += f"\t{row[0]}:{rounded_value:.4f}\n"
+    output_string = f"""
+    The average density of Pokemon within each location in the '{Region}' region: \n
+    """
+    counter = 0
+    for row in data:
+        if row[1] is None:
+            counter +=1
+        else:
+            rounded_value = round(float(row[1]), 4)
+            output_string += f"\t{row[0]}:{rounded_value:.4f}\n"
 
-        if counter >= len(data):
-            print(output_string)
-            return
-
-        output_string += f"The following locations in the '{Region}' region have no wild Pokemon encounters: \n"
-        for index in range(counter):
-            output_string += f"\t{data[index][0]}\n"
-
+    if counter >= len(data):
         print(output_string)
         return
+
+    output_string += f"The following locations in the '{Region}' region have no wild Pokemon encounters: \n"
+    for index in range(counter):
+        output_string += f"\t{data[index][0]}\n"
+
+    print(output_string)
+    return
 
 
         
