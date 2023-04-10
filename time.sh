@@ -1,2 +1,2 @@
 #!/bin/bash
-./pokemon_density Kanto
+./attack_damage 'Darmanitan - Galarian Zen Mode' 'Darmanitan - Galarian Standard Mode' 'Black 2'

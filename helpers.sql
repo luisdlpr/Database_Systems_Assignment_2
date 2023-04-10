@@ -161,6 +161,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+ -- Function to calculate the damage between an attacking and defending pokemon using a certain move.
+ -- Used for q5
 CREATE OR REPLACE FUNCTION damage_calc_formula(
   atker_level Numeric, 
   atk_power Numeric,
