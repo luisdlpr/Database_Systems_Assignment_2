@@ -159,5 +159,61 @@ BEGIN
   SELECT t.name FROM Types AS t WHERE t.id = type_id LIMIT 1 INTO name;
   RETURN Name;
 END;
-$$ LANGUAGE plpgsql
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION damage_calc_formula(
+  atker_level Numeric, 
+  atk_power Numeric,
+  atker_atk Numeric,
+  atker_spatk Numeric,
+  dfnder_dfn Numeric,
+  dfnder_spdfn Numeric,
+  random_factor Numeric,
+  atker_type_1 Integer,
+  atker_type_2 Integer,
+  dfnder_type_1 Integer,
+  dfnder_type_2 Integer,
+  move_type Integer,
+  move_category move_categories
+) RETURNS Integer
+AS $$
+DECLARE
+  damage_output Numeric;
+  level_component Numeric;
+  stat_component Numeric;
+  type_eff Numeric;
+  STAB Numeric;
+  mult Numeric;
+BEGIN
+  IF move_type = atker_type_1 OR move_type = atker_type_2 THEN
+    STAB := 1.5;
+  ELSE
+    STAB := 1.0;
+  END IF;
+
+  type_eff := 1.0;
+  FOR mult IN SELECT multiplier 
+  FROM Type_Effectiveness
+  WHERE attacking = move_type 
+  AND (
+    defending = dfnder_type_1
+    OR
+    defending = dfnder_type_2
+  ) 
+    LOOP
+      type_eff := type_eff * mult / 100.0;
+    END LOOP;
+
+  level_component := (((2.0 * atker_level) / 5.0) + 2.0);
+  IF move_category = 'Special' THEN
+    stat_component := atk_power * atker_spatk / dfnder_spdfn;
+  ELSE
+    stat_component := atk_power * atker_atk / dfnder_dfn;
+  END IF;
+  damage_output := ((level_component * stat_component) / 50.0) + 2.0;
+  damage_output := damage_output * random_factor * STAB * type_eff;
+
+  RETURN TRUNC(ROUND(damage_output::Numeric, 1));
+END;
+$$ LANGUAGE plpgsql;
   

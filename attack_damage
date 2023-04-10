@@ -44,7 +44,154 @@ Pokemon_Game_Name      = helpers.clean(sys.argv[3])
 
 
 def main():
-    # TODO: YOUR CODE HERE
+    # print all moves attacking pokemon can use that will do damage to defending pokemon
+        # move name
+        # min dmg
+        # max dmg
+        # order by max, min, name
+    # calculate minimum and maximum damage values for each move
+    # needed for calc
+        # move and pokemon types
+        # attack power
+        # attacker attack stat
+        # defender defense state
+        # type effectiveness
+        # only moves with dmg and dmg after calcs
+
+    with db.cursor() as cur:
+
+        poke_query = """
+        SELECT p.id, p.name, p.first_type, p.second_type, p.base_stats
+        FROM Pokemon AS p
+        WHERE name = %s;
+        """
+
+        cur.execute(poke_query, (Attacking_Pokemon_Name, ))
+        atker = cur.fetchall()
+
+        if len(atker) < 1:
+            print(f"'{Attacking_Pokemon_Name}' isn't a Pokemon that exists.", file=sys.stderr)
+            sys.exit(1)
+
+        atker = atker[0]
+        atker_stats = atker[4]
+        atker_stats = atker_stats[1:-1].split(',')
+        atker_stats = {
+            'hp' : atker_stats[0],
+            'atk' : atker_stats[1],
+            'dfn' : atker_stats[2],
+            'spatk' : atker_stats[3],
+            'spdfn' : atker_stats[4],
+            'spd' : atker_stats[5],
+        }
+
+        cur.execute(poke_query, (Defending_Pokemon_Name, ))
+        dfnder = cur.fetchall()
+
+        if len(dfnder) < 1:
+            print(f"'{Defending_Pokemon_Name}' isn't a Pokemon that exists.", file=sys.stderr)
+            sys.exit(1)        
+
+        dfnder = dfnder[0]
+        dfnder_stats = dfnder[4]
+        dfnder_stats = dfnder_stats[1:-1].split(',')
+        dfnder_stats = {
+            'hp' : dfnder_stats[0],
+            'atk' : dfnder_stats[1],
+            'dfn' : dfnder_stats[2],
+            'spatk' : dfnder_stats[3],
+            'spdfn' : dfnder_stats[4],
+            'spd' : dfnder_stats[5],
+        }
+        
+        check_game_query = "SELECT id FROM Games WHERE name = %s;"
+        cur.execute(check_game_query, (Pokemon_Game_Name, ))
+        if cur.fetchone() is None:
+            print(f"'Pokemon {Pokemon_Game_Name}' isn't a game in the Pokemon series.", file=sys.stderr)
+            sys.exit(1)        
+
+        check_poke_in_game_query = """
+        SELECT Game
+        FROM Pokedex
+        WHERE Game = (
+            SELECT id
+            FROM Games
+            WHERE name = %s
+        ) and National_ID = (
+            SELECT id
+            FROM Pokemon
+            WHERE name = %s
+        );
+        """
+        cur.execute(check_poke_in_game_query, (Pokemon_Game_Name, Attacking_Pokemon_Name))
+        if cur.fetchone() is None:
+            print(f"'{Attacking_Pokemon_Name}' doesn't appear in 'Pokemon {Pokemon_Game_Name}'.", file=sys.stderr)
+            sys.exit(1)        
+
+        cur.execute(check_poke_in_game_query, (Pokemon_Game_Name, Defending_Pokemon_Name))
+        if cur.fetchone() is None:
+            print(f"'{Attacking_Pokemon_Name}' doesn't appear in 'Pokemon {Pokemon_Game_Name}'.", file=sys.stderr)
+            sys.exit(1)        
+
+        attacks_query = """
+            SELECT DISTINCT
+            m.id, 
+            m.name, 
+            damage_calc_formula(1, m.power, %s, %s, %s, %s, 0.85, %s, %s, %s, %s, m.of_type, m.category) AS dmin,
+            damage_calc_formula(100, m.power, %s, %s, %s, %s, 1.00, %s, %s, %s, %s, m.of_type, m.category) AS dmax
+        FROM Moves AS m
+        INNER JOIN (
+            SELECT learnt_by, learnt_in, learns
+            FROM Learnable_moves
+            WHERE learnt_by = (
+                SELECT id FROM Pokemon WHERE name = %s 
+            ) AND learnt_in = (
+                SELECT id FROM Games WHERE name = %s
+            )
+        ) AS lm ON m.id = lm.learns
+        WHERE m.power is not Null AND m.category != 'Status'
+        ORDER BY dmax, dmin, m.name;
+        """
+
+        # order by max, min, name
+
+        cur.execute(attacks_query, (
+            atker_stats['atk'],
+            atker_stats['spatk'],
+            dfnder_stats['dfn'],
+            dfnder_stats['spdfn'],
+            atker[2],
+            atker[3],
+            dfnder[2],
+            dfnder[3],
+            atker_stats['atk'],
+            atker_stats['spatk'],
+            dfnder_stats['dfn'],
+            dfnder_stats['spdfn'],
+            atker[2],
+            atker[3],
+            dfnder[2],
+            dfnder[3],
+            Attacking_Pokemon_Name,
+            Pokemon_Game_Name))
+        moves = cur.fetchall()
+
+        if len(moves) < 1:
+            output_string = f"In 'Pokemon {Pokemon_Game_Name}', '{Attacking_Pokemon_Name}' can't attack '{Defending_Pokemon_Name}'."
+            print(output_string)
+            sys.exit(0)
+
+        output_string = f"In 'Pokemon {Pokemon_Game_Name}', When '{Attacking_Pokemon_Name}' attacks '{Defending_Pokemon_Name}',"
+        output_string += f"'{Attacking_Pokemon_Name}' can use the following moves:\n\n"
+
+        for r in moves:
+            # print(r)
+            if r[3] != 0:
+                output_string += f"\t'{r[1]}' for a minimum of {r[2]} damage and a maximum of {r[3]} damage to '{Defending_Pokemon_Name}'.\n"
+
+        print(output_string)
+
+
     ...
 
 
