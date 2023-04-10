@@ -7,8 +7,8 @@ COMP3311
 Assignment 2
 Pokemon Database
 
-Written by: <YOUR NAME HERE> <YOUR STUDENT ID HERE>
-Written on: <DATE HERE>
+Written by: Luis Vicente Reyes z5206766
+Written on: 100423
 
 Possible Evolutions
 
@@ -17,7 +17,7 @@ display a list of all the pokemon that could evolve into the given pokemon,
 and a list of all the pokemon that the given pokemon could evolve into.
 """
 
-
+### Imports
 import sys
 import psycopg2
 import helpers
@@ -38,9 +38,11 @@ if len(sys.argv) != 2:
     sys.exit(1)
 Pokemon_Name = helpers.clean(sys.argv[1])
 
-
+"""
+Return the formatted output for a group of requirements
+"""
 def format_requirements(requirements):
-    # [[evolution id, pokemon id, pokemon name, assertion, inverted], [...], [...]]
+    # set up a map for the requirements for ease of formatting
     ev_requirements_map = {}
     for req in requirements:
         update = ev_requirements_map.get(req[0], [])
@@ -48,7 +50,7 @@ def format_requirements(requirements):
         ev_requirements_map[req[0]] = update
 
     output_string = ""
-
+    
     for evo in ev_requirements_map.keys():
         for requirement in ev_requirements_map[evo]:
             if requirement[4] is True:
@@ -61,6 +63,59 @@ def format_requirements(requirements):
     output_string = output_string[0:-5]
 
     return output_string
+
+"""
+Query the pre or post evolutions of a pokemon (given its name)
+"""
+def query_evolutions(isPre, name, cursor):
+    if isPre:
+        search_param = 'pre_evolution'
+        alt_param = 'post_evolution'
+    else:
+        search_param = 'post_evolution'
+        alt_param = 'pre_evolution'
+
+    generic_query = f"""
+        SELECT pe.id, po.id as poke_id, po.name, re.assertion, er.inverted
+        FROM Pokemon AS po
+        INNER JOIN (
+            SELECT e.id, e.{search_param}
+            FROM Evolutions AS e
+            INNER JOIN (
+                SELECT id FROM Pokemon WHERE name = %s
+            ) AS p ON p.id = e.{alt_param}
+        ) AS pe ON pe.{search_param} = po.id
+        JOIN (
+            SELECT evolution, requirement, inverted
+            FROM Evolution_Requirements
+        ) AS er ON er.evolution = pe.id
+        JOIN (
+            SELECT id, assertion
+            FROM Requirements
+        ) AS re ON er.requirement = re.id;
+    """
+
+    cursor.execute(generic_query, (name, ))
+    return cursor.fetchall()
+
+"""
+Given the output of a query, build the formatted output.
+"""
+def format_evolutions(s1, s2, ev_data):
+    if len(ev_data) == 0:
+        return s2
+    ev_map = {}
+    for ev in ev_data:
+        update = ev_map.get(ev[1], [])
+        update.append(ev)
+        ev_map[ev[1]] = update
+
+    output_string = s1
+    for e in ev_map.keys():
+        output_string += f"\t'{ev_map[e][0][2]}' when the following requirements are satisfied:\n"
+        output_string += format_requirements(ev_map[e])
+    return output_string
+
 
 def main():
     with db.cursor() as cur:
@@ -76,84 +131,26 @@ def main():
             print(f"'{Pokemon_Name}' isn't a Pokemon that exists.", file=sys.stderr)
             sys.exit(1)
 
-        # take name of pokemon
-        # print pre evolutions and evolutions
-        post_ev_query = """
-        SELECT pe.id, po.id as poke_id, po.name, re.assertion, er.inverted
-        FROM Pokemon AS po
-        INNER JOIN (
-            SELECT e.id, e.post_evolution
-            FROM Evolutions AS e
-            INNER JOIN (
-                SELECT id FROM Pokemon WHERE name = %s
-            ) AS p ON p.id = e.pre_evolution
-        ) AS pe ON pe.post_evolution = po.id
-        JOIN (
-            SELECT evolution, requirement, inverted
-            FROM Evolution_Requirements
-        ) AS er ON er.evolution = pe.id
-        JOIN (
-            SELECT id, assertion
-            FROM Requirements
-        ) AS re ON er.requirement = re.id;
-        """
-        cur.execute(post_ev_query, (Pokemon_Name, ))
-        post_evs = cur.fetchall()
+        post_evs = query_evolutions(False, Pokemon_Name, cur)
+        pre_evs = query_evolutions(True, Pokemon_Name, cur)
 
-        pre_ev_query = """
-        SELECT pe.id, po.id as poke_id, po.name, re.assertion, er.inverted
-        FROM Pokemon AS po
-        INNER JOIN (
-            SELECT e.id, e.pre_evolution
-            FROM Evolutions AS e
-            INNER JOIN (
-                SELECT id FROM Pokemon WHERE name = %s
-            ) AS p ON p.id = e.post_evolution
-        ) AS pe ON pe.pre_evolution = po.id
-        JOIN (
-            SELECT evolution, requirement, inverted
-            FROM Evolution_Requirements
-        ) AS er ON er.evolution = pe.id
-        JOIN (
-            SELECT id, assertion
-            FROM Requirements
-        ) AS re ON er.requirement = re.id
-        ORDER BY po.id, pe.id, er.inverted, re.id;
-        """
-        cur.execute(pre_ev_query, (Pokemon_Name, ))
-        pre_evs = cur.fetchall()
+    # format the output string
+    # pre evolutions
+    output_string = format_evolutions(
+        f"'{Pokemon_Name}' can evolve from:\n",
+        f"'{Pokemon_Name}' doesn't have any pre-evolutions.\n\n",
+        pre_evs
+    )
 
-    if len(pre_evs) == 0:
-        output_string = f"'{Pokemon_Name}' doesn't have any pre-evolutions.\n\n"
-    else:
-        pre_ev_map = {}
-        for ev in pre_evs:
-            update = pre_ev_map.get(ev[1], [])
-            update.append(ev)
-            pre_ev_map[ev[1]] = update
-
-        output_string = f"'{Pokemon_Name}' can evolve from:\n"
-        for e in pre_ev_map.keys():
-            output_string += f"\t'{pre_ev_map[e][0][2]}' when the following requirements are satisfied:\n"
-            output_string += format_requirements(pre_ev_map[e])
-
-    if len(post_evs) == 0:
-        output_string += f"'{Pokemon_Name}' doesn't have any post-evolutions.\n"
-    else:
-        post_ev_map = {}
-        for ev in post_evs:
-            update = post_ev_map.get(ev[1], [])
-            update.append(ev)
-            post_ev_map[ev[1]] = update
-
-        output_string += f"'{Pokemon_Name}' can evolve into:\n"
-        for e in post_ev_map.keys():
-            output_string += f"\t'{post_ev_map[e][0][2]}' when the following requirements are satisfied:\n"
-            output_string += format_requirements(post_ev_map[e])
+    # post evolutions
+    output_string += format_evolutions(
+        f"'{Pokemon_Name}' can evolve into:\n", 
+        f"'{Pokemon_Name}' doesn't have any post-evolutions.\n",
+        post_evs
+    )
 
     print(output_string)
     sys.exit(0)
-
 
 if __name__ == '__main__':
     try:

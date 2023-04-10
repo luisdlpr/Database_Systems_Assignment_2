@@ -97,6 +97,8 @@ INNER JOIN (
   FROM Pokemon
 ) AS p ON p.id = a.Known_By;
 
+ -- Function to calculate the scaled density given a pokemon height, weight, and rarity.
+ -- used for q3.
 CREATE OR REPLACE FUNCTION scaled_density(m Meters, k Kilograms, s Numeric) RETURNS Numeric
 AS $$
 DECLARE
@@ -107,6 +109,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+ -- View to show the sum and count of all pokemon within a location ID.
+ -- used for q3.
 CREATE OR REPLACE VIEW sum_density_by_location(count_density, sum_Density, Location_ID) AS
 SELECT count(scaled_density(p.average_height, p.average_weight, e.rarity)), 
         sum(scaled_density(p.average_height, p.average_weight, e.rarity)), e.occurs_at
@@ -121,20 +125,8 @@ INNER JOIN (
 ) AS l ON l.id = e.occurs_at
 GROUP BY e.occurs_at;
 
--- create or replace view test(name, height, weight, rarity, d, e) as
--- SELECT p.name, p.average_height, p.average_weight, e.rarity, scaled_density(p.average_height, p.average_weight, e.rarity), e.occurs_at
--- FROM Pokemon AS p
--- INNER JOIN (
---     SELECT *
---     FROM pokedex
--- ) AS e ON p.id = e.national_id
--- INNER JOIN (
---     SELECT *
---     FROM Locations
--- ) AS l ON l.id = e.occurs_at;
-
-
-
+ -- View showing the locations in the db by their region.
+ -- used for q3.
 CREATE OR REPLACE VIEW locations_in_region(name, id, region) AS
 SELECT DISTINCT l.name, l.id, g.region
 FROM Locations as l
@@ -143,14 +135,8 @@ INNER JOIN (
     FROM Games
 ) AS g ON l.appears_in = g.id;
 
--- CREATE OR REPLACE VIEW sum_density_by_location(name, count_density, sum_density, region) AS
--- SELECT l.name, d.count_density, d.sum_density, l.region
--- FROM locations_in_region AS l
--- LEFT JOIN (
---   SELECT *
---   FROM sum_density_by_location
--- ) AS d ON d.location_id = l.id;
-
+ -- Function used to retreive a type name from a type id in the pokemon db.
+ -- used for q4.
 CREATE OR REPLACE FUNCTION pokemon_type_names(type_id Numeric) RETURNS Text
 AS $$
 DECLARE
@@ -162,7 +148,7 @@ END;
 $$ LANGUAGE plpgsql;
 
  -- Function to calculate the damage between an attacking and defending pokemon using a certain move.
- -- Used for q5
+ -- Used for q5.
 CREATE OR REPLACE FUNCTION damage_calc_formula(
   atker_level Numeric, 
   atk_power Numeric,

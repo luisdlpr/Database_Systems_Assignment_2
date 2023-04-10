@@ -7,15 +7,13 @@ COMP3311
 Assignment 2
 Pokemon Database
 
-Written by: Luis Vicente De La Paz Reyes z5206766
+Written by: Luis Vicente Reyes z5206766
 Written on: 050423
 
 My Pokemon
 
 Create your very own Pokemon
 
-TO ASK:
-    distinct moves??
 """
 
 
@@ -158,46 +156,46 @@ def main():
         cur.execute(query_poke_moves_menu, (poke_id_split[0], poke_id_split[1], game_selected[1]))
         moves_options = cur.fetchall()
 
-        # let the user select up to 4 moves
-        moves_selected = []
-        for _ in range(4):
-            # if there are no more options just exit
-            if len(moves_options) <= 0:
-                break
-            move_selected = menu([row[0] for row in moves_options])
-            moves_selected.append(moves_options[move_selected])
-            moves_options.pop(move_selected)
+    # let the user select up to 4 moves
+    moves_selected = []
+    for _ in range(4):
+        # if there are no more options just exit
+        if len(moves_options) <= 0:
+            break
+        move_selected = menu([row[0] for row in moves_options])
+        moves_selected.append(moves_options[move_selected])
+        moves_options.pop(move_selected)
 
-        # convert the typeids to a string of names
-        types = [poke_selected[3], poke_selected[4]]
-        type_string = "Type: "
+    # convert the typeids to a string of names
+    types = [poke_selected[3], poke_selected[4]]
+    type_string = "Type: "
 
-        if types[1] is not None:
-            type_string += f"{types[0]} + {types[1]} \n"
-        else:
-            type_string += f"{types[0]} \n"
+    if types[1] is not None:
+        type_string += f"{types[0]} + {types[1]} \n"
+    else:
+        type_string += f"{types[0]} \n"
 
-        # format and input the collected data into output string
-        output_string = f"""
-              Here is your new Pokemon (from Pokemon {game_selected[0]}):
+    # format and input the collected data into output string
+    output_string = f"""
+          Here is your new Pokemon (from Pokemon {game_selected[0]}):
 
-              Name: {poke_selected[0]}
-              Species: {poke_selected[2]}
-        """ + type_string
-        
-        output_string += f"""
-              Pokedex Number: {poke_selected[5]} ({poke_id_split[0]})
+          Name: {poke_selected[0]}
+          Species: {poke_selected[2]}
+    """ + type_string
+    
+    output_string += f"""
+          Pokedex Number: {poke_selected[5]} ({poke_id_split[0]})
 
-              Ability: {ab_selected[0]}
+          Ability: {ab_selected[0]}
 
-              Moves:
-        """
-        for move in moves_selected:
-            output_string += f"\t{move[0]}\t[{move[2]}]\t(Category: {move[3]}, Power: {move[4]}, Accuracy:{move[5]})\n"
-        
-        print(output_string)
+          Moves:
+    """
+    for move in moves_selected:
+        output_string += f"\t{move[0]}\t[{move[2]}]\t(Category: {move[3]}, Power: {move[4]}, Accuracy:{move[5]})\n"
+    
+    print(output_string)
 
-    return
+    sys.exit(0)
 
 if __name__ == '__main__':
     try:
